@@ -1,7 +1,11 @@
 package com.fcfs.coupon.repository;
 
 import com.fcfs.coupon.entity.Coupon;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 /**
@@ -18,5 +22,10 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     
     // 쿠폰 이름으로 쿠폰을 조회하는 메서드
     Optional<Coupon> findByName(String name);
+
+    // 비관적 락(Pessimistic Write Lock)을 사용해 특정 쿠폰 정보를 조회하는 메서드
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Coupon c where c.id = :id")
+    Optional<Coupon> findByIdWithPessimisticLock(@Param("id") Long id);
 }
 

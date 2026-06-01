@@ -3,8 +3,10 @@ package com.fcfs.coupon.service;
 import com.fcfs.coupon.entity.Coupon;
 import com.fcfs.coupon.entity.CouponIssue;
 import com.fcfs.coupon.entity.User;
+import com.fcfs.coupon.entity.CouponWithVersion;
 import com.fcfs.coupon.repository.CouponIssueRepository;
 import com.fcfs.coupon.repository.CouponRepository;
+import com.fcfs.coupon.repository.CouponWithVersionRepository;
 import com.fcfs.coupon.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class CouponService {
     private final UserRepository userRepository;
     private final CouponRepository couponRepository;
     private final CouponIssueRepository couponIssueRepository;
+    private final CouponWithVersionRepository couponWithVersionRepository;
 
     /**
      * 전체 쿠폰 목록 조회
@@ -108,6 +111,62 @@ public class CouponService {
         couponRepository.save(coupon);
 
         // 5. 쿠폰 발급 이력 객체 생성 및 저장
+        CouponIssue couponIssue = CouponIssue.builder()
+                .userId(user.getId())
+                .couponId(coupon.getId())
+                .build();
+
+        return couponIssueRepository.save(couponIssue);
+    }
+
+    /**
+     * [비관적 락] 쿠폰 발급 비즈니스 로직
+     * - select ... for update 쿼리를 날려서 해당 로우에 쓰기 락을 걸고 수량을 감소시킵니다.
+     */
+    @Transactional
+    public CouponIssue issueCouponWithPessimisticLock(String username, Long couponId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+        // 비관적 락이 적용된 조회 메서드 호출
+        Coupon coupon = couponRepository.findByIdWithPessimisticLock(couponId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 쿠폰입니다."));
+
+        if (couponIssueRepository.existsByUserIdAndCouponId(user.getId(), coupon.getId())) {
+            throw new IllegalStateException("이미 쿠폰을 발급받았습니다.");
+        }
+
+        coupon.decreaseQuantity();
+        couponRepository.save(coupon);
+
+        CouponIssue couponIssue = CouponIssue.builder()
+                .userId(user.getId())
+                .couponId(coupon.getId())
+                .build();
+
+        return couponIssueRepository.save(couponIssue);
+    }
+
+    /**
+     * [낙관적 락] 쿠폰 발급 비즈니스 로직 (단일 시도용)
+     * - 엔티티의 @Version 필드를 통해 JPA가 트랜잭션 종료 시점에 버전 일치 여부를 검증합니다.
+     */
+    @Transactional
+    public CouponIssue issueCouponWithOptimisticLock(String username, Long couponId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+        // 낙관적 락 전용 엔티티 조회
+        CouponWithVersion coupon = couponWithVersionRepository.findById(couponId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 쿠폰입니다."));
+
+        if (couponIssueRepository.existsByUserIdAndCouponId(user.getId(), coupon.getId())) {
+            throw new IllegalStateException("이미 쿠폰을 발급받았습니다.");
+        }
+
+        coupon.decreaseQuantity();
+        couponWithVersionRepository.save(coupon);
+
         CouponIssue couponIssue = CouponIssue.builder()
                 .userId(user.getId())
                 .couponId(coupon.getId())
