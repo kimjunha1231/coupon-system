@@ -18,5 +18,8 @@ public interface CouponIssueRepository extends JpaRepository<CouponIssue, Long> 
     
     // 특정 유저에게 특정 쿠폰이 이미 발급되었는지 여부 확인
     boolean existsByUserIdAndCouponId(Long userId, Long couponId);
+
+    // 특정 쿠폰이 총 몇 개 발급되었는지 카운트
+    long countByCouponId(Long couponId);
 }
 
