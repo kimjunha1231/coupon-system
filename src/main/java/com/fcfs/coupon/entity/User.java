@@ -23,7 +23,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User extends BaseTimeEntity {
     
     /**
      * - @Id: 테이블의 Primary Key (기본키) 필드임을 선언합니다.

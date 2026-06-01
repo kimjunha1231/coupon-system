@@ -83,11 +83,12 @@ public class CouponService {
         couponRepository.save(coupon);
 
         // 5. 쿠폰 발급 이력 객체 생성 및 데이터베이스 저장 (CouponIssue 레코드 추가)
+        // (createdAt과 updatedAt은 JPA Auditing에 의해 저장 시 자동으로 기록됩니다.)
         CouponIssue couponIssue = CouponIssue.builder()
                 .userId(user.getId())
                 .couponId(coupon.getId())
-                .issuedAt(LocalDateTime.now())
                 .build();
+
 
         return couponIssueRepository.save(couponIssue);
     }

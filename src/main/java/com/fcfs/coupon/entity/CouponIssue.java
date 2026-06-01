@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CouponIssue {
+public class CouponIssue extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,8 +31,6 @@ public class CouponIssue {
 
     @Column(nullable = false)
     private Long couponId; // 발급된 쿠폰의 고유 ID
-
-    @Column(nullable = false)
-    private LocalDateTime issuedAt; // 쿠폰이 발급된 일시
 }
+
 
