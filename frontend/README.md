@@ -1,16 +1,77 @@
-# React + Vite
+# 🎟️ FCFS Coupon System - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+이 프로젝트는 선착순 쿠폰 발급 시스템의 사용자 화면(로그인, 회원가입, 쿠폰 목록 및 신청)과 관리자 화면(쿠폰 생성 및 현황 확인)을 제공하는 React 기반 웹 어플리케이션입니다.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 실행 방법
 
-## React Compiler
+### 1. 의존성 패키지 설치
+프로젝트 루트 폴더(frontend)에서 아래 명령어를 실행해 필수 라이브러리를 설치합니다.
+```bash
+npm install
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. 개발 서버 실행
+설치가 완료되면 다음 명령어를 통해 개발용 웹 서버를 기동합니다.
+```bash
+npm run dev
+```
+기본적으로 브라우저에서 `http://localhost:5173/`으로 접속하여 테스트할 수 있습니다.
 
-## Expanding the ESLint configuration
+### 3. 프로덕션 빌드
+배포용 번들(최적화된 자바스크립트 및 CSS)을 빌드하고 싶을 때는 아래 명령어를 사용합니다.
+```bash
+npm run build
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## 📚 초보자를 위한 리액트 & 웹 CS 핵심 개념 가이드
+
+리액트를 처음 접하는 개발자도 코드의 구조와 원리를 이해할 수 있도록 프로젝트에 적용된 핵심 개념들을 정리했습니다.
+
+### 1. State (상태 관리)
+- **개념**: State(상태)는 컴포넌트 내부에서 생성되고 관리되며, **시간에 따라 변할 수 있는 동적인 데이터**를 의미합니다.
+- **특징**: React는 상태 값이 변경되면, 해당 상태를 사용하는 화면 부분을 자동으로 다시 계산해서 그려줍니다(**리렌더링, Re-rendering**).
+- **프로젝트 적용 예시**: 
+  - [App.jsx](file:///c:/Users/KOSA/Desktop/coupon-system/frontend/src/App.jsx)의 `user` 상태: 현재 로그인된 사용자의 세션 정보. 이 값이 `null`에서 유저 객체로 바뀌는 순간 화면이 로그인 창에서 쿠폰 대시보드로 자동 리렌더링됩니다.
+  - [Login.jsx](file:///c:/Users/KOSA/Desktop/coupon-system/frontend/src/pages/Login.jsx)의 `username`, `password` 상태: 사용자가 입력창에 글자를 칠 때마다 실시간으로 갱신되는 텍스트 값.
+
+### 2. React Hooks (리액트 훅)
+React 16.8 버전부터 도입된 개념으로, 클래스형 컴포넌트를 사용하지 않고도 **함수형 컴포넌트 내에서 상태 관리 및 생명주기(Lifecycle) 기능을 연동**할 수 있게 해주는 특별한 함수들입니다.
+
+* **`useState`**:
+  - 가장 대표적인 훅으로, `const [상태명, 상태변경함수] = useState(초기값);` 형태로 선언합니다.
+  - 상태변경함수를 통해서만 상태를 수정할 수 있으며, 이 함수가 호출되어야 React가 값의 변화를 감지하고 화면을 다시 그립니다.
+* **`useEffect`**:
+  - 컴포넌트가 화면에 **처음 나타날 때(Mount)**, **사라질 때(Unmount)**, 혹은 **특정 변수가 변경될 때(Update)** 실행할 사이드 이펙트(Side Effect)를 지정합니다.
+  - **프로젝트 적용 예시**: [CouponList.jsx](file:///c:/Users/KOSA/Desktop/coupon-system/frontend/src/pages/CouponList.jsx)에서 컴포넌트가 마운트될 때 3초마다 데이터를 갱신하는 타이머(`setInterval`)를 실행하고, 컴포넌트가 꺼질 때(언마운트) 브라우저 메모리 누수를 방지하기 위해 타이머를 중지(`clearInterval`)하는 클린업(Cleanup) 처리를 합니다.
+
+### 3. SPA & Routing (라우팅)
+* **SPA (Single Page Application)**:
+  - 실제 웹 서버로부터 받아오는 HTML 파일은 단 하나(`index.html`)뿐입니다. 
+  - 사용자가 메뉴를 클릭할 때마다 서버에 새로 페이지를 요청하는 것이 아니라, 자바스크립트를 이용해 필요한 컴포넌트만 동적으로 지우고 새로 그려 여러 페이지가 있는 것처럼 동작하는 방식입니다.
+* **Routing (라우팅)**:
+  - 사용자가 주소창에 친 URL 경로(예: `/login`, `/admin`)에 맞추어 그에 알맞은 컴포넌트 화면을 화면에 끼워주는 프로세스입니다.
+* **`react-router-dom`**:
+  - 리액트 생태계의 표준 라우터 라이브러리입니다.
+  - `<Routes>`와 `<Route>`: 주소(path)와 컴포넌트(element)를 매핑해 줍니다.
+  - `useNavigate`: 자바스크립트 코드 상에서 강제로 URL 주소를 바꾸어 화면을 이동시킵니다 (예: 로그인 성공 시 `/coupons`로 이동).
+  - `useLocation`: 현재 브라우저가 어떤 경로에 머무는지 알려줍니다 (예: 네비게이션 메뉴바에서 현재 머무는 탭에 불빛 스타일을 켜줄 때 사용).
+* **Route Guard (인증/권한 보호)**:
+  - 특정 페이지에 접근하기 전에 자격 조건이 충족되었는지 검사하는 기능입니다.
+  - [App.jsx](file:///c:/Users/KOSA/Desktop/coupon-system/frontend/src/App.jsx)에서는 비로그인 유저가 대시보드나 관리자 창에 오면 자동으로 로그인 주소(`/login`)로 쫓아내고, `ADMIN` 권한이 없는 일반 사용자가 관리자 주소(`/admin`)로 들어오면 자동으로 차단하는 가드 구조가 구현되어 있습니다.
+
+### 4. 비동기 HTTP 통신과 API 연동 (CS 기본 개념)
+* **Axios (액시오스)**:
+  - 브라우저와 백엔드 서버 간에 HTTP 통신(GET, POST 등)을 쉽게 요청할 수 있게 해주는 Promise 기반의 라이브러리입니다.
+* **Asynchronous (비동기 처리: `async` / `await`)**:
+  - 백엔드에 보낸 API 요청이 완료되기까지는 수 밀리초에서 수 초의 물리적인 시간이 소요됩니다.
+  - 이 요청이 끝날 때까지 브라우저 화면이 멈추지(블로킹) 않도록 백그라운드에서 동작시키며, 응답이 돌아온 순간에만 결과를 받아 다음 코드를 처리하는 방식입니다.
+  - `async` 키워드가 붙은 함수 내부에서는 `await` 키워드를 이용해 비동기 응답이 올 때까지 가독성 높게 동기적인 순서로 코드를 기술할 수 있습니다.
+* **Exception Handling (에러 처리: `try` / `catch`)**:
+  - 네트워크 단절이나 백엔드 서버 오류 등으로 요청이 실패할 경우, 프로그램이 뻗지 않고 사용자에게 친절한 에러 메시지(토스트 알림)를 보여주기 위해 예외 처리 구문을 사용합니다.
+* **Form Default Action Prevention (`e.preventDefault()`)**:
+  - HTML의 `<form>` 태그는 제출(submit) 버튼을 누르면 브라우저 창 전체를 새로고침하며 해당 주소로 데이터를 전송하려는 기본 동작이 탑재되어 있습니다.
+  - 하지만 SPA 구조에서는 새로고침이 발생하면 메모리상의 모든 React 상태가 초기화되기 때문에, `e.preventDefault()`를 호출하여 브라우저의 새로고침을 강제로 막고 자바스크립트로 직접 전송 처리를 합니다.

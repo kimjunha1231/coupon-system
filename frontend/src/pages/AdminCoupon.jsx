@@ -7,36 +7,46 @@ import axios from 'axios';
  * - 관리자(ADMIN)만 접근하여 신규 쿠폰을 등록하는 화면입니다.
  * - 신규 쿠폰 생성 양식 및 현재 DB에 등록되어 있는 쿠폰들의 전체 목록을 테이블 형태로 시각화합니다.
  */
-function AdminCoupon({ user, setCurrentPage }) {
+function AdminCoupon({ user }) {
+  // [React 상태 관리 - useState]
+  // - name: 새로 등록할 쿠폰 이름
+  // - totalQuantity: 새로 등록할 쿠폰 총 발급 수량
+  // - loading: 등록 진행 상태 (버튼 비활성화 제어)
+  // - toast: 알림 정보 메시지
+  // - coupons: 현재 DB에 등록되어 표시할 전체 쿠폰 목록
   const [name, setName] = useState('');
   const [totalQuantity, setTotalQuantity] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [coupons, setCoupons] = useState([]);
 
-  // 등록된 쿠폰 목록 가져오기
+  // DB에 존재하는 전체 쿠폰 목록을 조회하여 테이블에 채우는 비동기 함수
   const fetchCoupons = async () => {
     try {
       const response = await axios.get('http://localhost:8080/api/coupons');
-      setCoupons(response.data);
+      setCoupons(response.data); // 최신 목록을 가져와 테이블 리렌더링
     } catch (error) {
       console.error('쿠폰 목록 로드 실패:', error);
     }
   };
 
+  // 컴포넌트가 처음 생성(마운트)될 때 딱 한 번 실행하여 기존 쿠폰 목록 로드
   useEffect(() => {
     fetchCoupons();
   }, []);
 
-  // 쿠폰 생성 제출
+  // [신규 쿠폰 등록 Form Submit 이벤트 핸들러]
   const handleCreateCoupon = async (e) => {
+    // 폼 제출 시 브라우저 새로고침(기본동작) 방지
     e.preventDefault();
 
+    // 1. 유효성 검증: 빈 값 체크
     if (!name.trim() || !totalQuantity) {
       setToast({ type: 'error', message: '쿠폰 이름과 발급 수량을 모두 입력해 주세요.' });
       return;
     }
 
+    // 2. 숫자로 변환 처리 (parseInt) 및 수량 유효성 체크
     const qty = parseInt(totalQuantity);
     if (isNaN(qty) || qty <= 0) {
       setToast({ type: 'error', message: '발급 수량은 1장 이상이어야 합니다.' });
@@ -47,8 +57,9 @@ function AdminCoupon({ user, setCurrentPage }) {
     setToast(null);
 
     try {
-      // POST http://localhost:8080/api/coupons 호출
-      // 관리자 고유 ID(user.id)를 함께 담아서 요청을 보냅니다 (백엔드 권한 검증에 사용).
+      // 3. 백엔드 쿠폰 생성 API 호출
+      // - 쿠폰 이름, 수량과 함께 현재 로그인한 관리자의 ID(user.id)를 보냅니다.
+      // - 백엔드는 전달받은 adminId의 사용자가 진짜 관리자 권한을 가졌는지 검증한 후 쿠폰을 등록합니다.
       await axios.post('http://localhost:8080/api/coupons', {
         name: name.trim(),
         totalQuantity: qty,
@@ -56,9 +67,11 @@ function AdminCoupon({ user, setCurrentPage }) {
       });
 
       setToast({ type: 'success', message: '🎉 새 선착순 쿠폰이 정상적으로 등록되었습니다!' });
+      
+      // 4. 등록 완료 후 입력 폼 초기화 및 리스트 갱신
       setName('');
       setTotalQuantity('');
-      fetchCoupons(); // 목록 갱신
+      fetchCoupons(); // 목록 데이터를 다시 받아와 화면 갱신
     } catch (error) {
       const errorMsg = error.response?.data?.message || '쿠폰 등록 도중 오류가 발생했습니다.';
       setToast({ type: 'error', message: `❌ ${errorMsg}` });

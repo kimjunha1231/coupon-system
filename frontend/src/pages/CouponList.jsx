@@ -8,15 +8,22 @@ import axios from 'axios';
  * - 3초 주기 폴링(Polling)을 수행하여 여러 사람이 발급 시 변경되는 잔여 수량을 실시간 갱신합니다.
  */
 function CouponList({ user }) {
+  // [React 상태 관리 - useState]
+  // - coupons: 백엔드에서 로드한 전체 쿠폰 목록 배열
+  // - loadingMap: 각 쿠폰 번호별로 발급 신청 진행 여부를 저장하는 맵 객체 { [couponId]: true/false }
+  //               (여러 개의 버튼 중 자신이 클릭한 버튼만 로딩 표시를 하기 위함)
+  // - fetching: 화면 최초 진입 시, 로딩 표시를 위한 상태값
+  // - toast: 처리 결과 알림 정보
   const [coupons, setCoupons] = useState([]);
-  const [loadingMap, setLoadingMap] = useState({}); // 쿠폰 개별로 발급 진행 상태를 제어하기 위한 맵
+  const [loadingMap, setLoadingMap] = useState({}); 
   const [fetching, setFetching] = useState(true);
   const [toast, setToast] = useState(null);
 
-  // 전체 쿠폰 목록 불러오기
+  // 백엔드로부터 최신 선착순 쿠폰 정보 목록을 읽어오는 함수
   const fetchCoupons = async () => {
     try {
       const response = await axios.get('http://localhost:8080/api/coupons');
+      // 백엔드가 제공한 JSON 데이터를 coupons 상태에 업데이트 (화면 리렌더링 발생)
       setCoupons(response.data);
       setFetching(false);
     } catch (error) {
@@ -25,31 +32,41 @@ function CouponList({ user }) {
     }
   };
 
-  // 마운트 시 최초 조회 및 3초 간격 폴링 타이머 가동
+  // [React Lifecycle Hook - useEffect]
+  // - 컴포넌트가 화면에 마운트(처음 나타남)되거나 언마운트(사라짐)될 때 실행될 사이드 이펙트를 정의합니다.
+  // - 두 번째 인자인 의존성 배열(dependency array)이 비어있으면 `[]`, 컴포넌트가 생성될 때 딱 한 번만 콜백 함수가 작동합니다.
   useEffect(() => {
+    // 1. 화면이 열리자마자 즉시 쿠폰 목록 조회 실행
     fetchCoupons();
+
+    // 2. 다른 사용자가 쿠폰을 받아 수량이 닳는 것을 보여주기 위해 3초(3000ms) 간격으로 목록을 재조회하는 타이머 가동 (폴링)
     const interval = setInterval(fetchCoupons, 3000);
+
+    // 3. [중요 - 클린업 함수]
+    // - 컴포넌트가 화면에서 사라질 때(예: 다른 페이지로 이동) 타이머를 정지시킵니다.
+    // - 정지하지 않으면 브라우저 메모리에 타이머가 누적되어 성능 저하 및 에러를 유발합니다.
     return () => clearInterval(interval);
   }, []);
 
-  // 쿠폰 발급 신청
+  // 쿠폰 발급 신청 처리 함수
   const handleIssueCoupon = async (couponId) => {
+    // 특정 쿠폰 ID에 해당하는 버튼의 로딩 상태를 true로 전환
     setLoadingMap(prev => ({ ...prev, [couponId]: true }));
     setToast(null);
 
     try {
-      // POST http://localhost:8080/api/coupons/{couponId}/issue 호출
-      // 현재 로그인한 사용자(user.username)를 담아서 전송합니다.
+      // POST 통신: 특정 쿠폰에 대해 현재 사용자의 username으로 선착순 발급 요청 전송
       await axios.post(`http://localhost:8080/api/coupons/${couponId}/issue`, {
         username: user.username
       });
 
       setToast({ type: 'success', message: '🎉 쿠폰 발급에 성공했습니다! DB에 이력이 등록되었습니다.' });
-      fetchCoupons(); // 발급 성공 직후 빠른 갱신
+      fetchCoupons(); // 발급에 성공하면 즉시 화면의 수량을 최신화하기 위해 강제 재호출
     } catch (error) {
       const errorMsg = error.response?.data?.message || '쿠폰 발급에 실패했습니다.';
       setToast({ type: 'error', message: `❌ ${errorMsg}` });
     } finally {
+      // 통신 완료(성공/실패 무관) 시 해당 쿠폰의 로딩을 false로 풀어줌
       setLoadingMap(prev => ({ ...prev, [couponId]: false }));
     }
   };

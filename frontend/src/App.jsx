@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -8,78 +9,100 @@ import AdminCoupon from './pages/AdminCoupon';
 /**
  * [React Main Entry Component - App]
  * 
- * - 애플리케이션의 최상위 컴포넌트입니다.
- * - 로그인 상태(user)를 전역적으로 소유하며, 간단한 상태 기반 라우터를 활용해
- *   현재 페이지(currentPage) 상태에 맞춰 적절한 화면 컴포넌트(로그인, 회원가입, 쿠폰신청, 어드민)를 렌더링합니다.
+ * - 애플리케이션의 최상위(Root) 레이아웃 컴포넌트입니다.
+ * - 로그인된 사용자의 정보(user) 상태를 중앙에서 관리(useState)합니다.
+ * - [URL 라우팅 구조 도입]: 
+ *   기존의 `currentPage` 상태 대신 React Router의 `<Routes>`와 `<Route>`를 사용해
+ *   브라우저 주소창(URL)의 변화에 따라 적절한 화면 컴포넌트를 렌더링하고, 보안(권한) 검사를 함께 수행합니다.
  */
 function App() {
-  // 로그인된 사용자 정보 상태 (id, username, role 등의 정보를 객체로 담음)
+  // [React 상태 관리 - useState]
+  // - user: 현재 로그인한 사용자의 정보 객체 (null이면 로그아웃 상태)
+  // - setUser: 이 상태 값을 변경할 수 있는 setter 함수
   const [user, setUser] = useState(null);
 
-  // 현재 활성화된 페이지 상태 ('login', 'signup', 'couponList', 'adminCoupon')
-  const [currentPage, setCurrentPage] = useState('login');
-
-  // 로그인 성공 시 호출될 핸들러
+  // 로그인 성공 시 호출되어 전역 user 상태를 채워주는 핸들러
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    // 로그인 성공 시 기본 페이지인 쿠폰 목록 화면으로 이동
-    setCurrentPage('couponList');
   };
 
-  // 로그아웃 시 호출될 핸들러
+  // 로그아웃 시 호출되어 전역 user 상태를 비워주는 핸들러
   const handleLogout = () => {
     setUser(null);
-    // 로그아웃 시 로그인 페이지로 이동
-    setCurrentPage('login');
-  };
-
-  /**
-   * [상태 기반 라우팅 로직]
-   * - 비로그인 상태일 때는 로그인 혹은 회원가입 창만 노출되도록 제한합니다.
-   * - 로그인 상태일 때 해당 페이지 컴포넌트를 렌더링하며, 관리자 전용 페이지 진입 시 한 번 더 권한 검사를 수행합니다.
-   */
-  const renderPage = () => {
-    // 1. 비로그인 상태일 때
-    if (!user) {
-      if (currentPage === 'signup') {
-        return <Signup setCurrentPage={setCurrentPage} />;
-      }
-      return <Login onLoginSuccess={handleLoginSuccess} setCurrentPage={setCurrentPage} />;
-    }
-
-    // 2. 로그인 상태일 때
-    switch (currentPage) {
-      case 'couponList':
-        return <CouponList user={user} />;
-      case 'adminCoupon':
-        // 관리자가 아님에도 접근하려는 경우 차단
-        if (user.role !== 'ADMIN') {
-          setCurrentPage('couponList');
-          return <CouponList user={user} />;
-        }
-        return <AdminCoupon user={user} setCurrentPage={setCurrentPage} />;
-      case 'signup':
-      case 'login':
-        // 이미 로그인한 사용자가 로그인/가입 창으로 진입하려 하면 목록으로 리다이렉트
-        return <CouponList user={user} />;
-      default:
-        return <CouponList user={user} />;
-    }
   };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* 상단 내비게이션 바 (App 전체 레이아웃에 배치) */}
-      <Navbar 
-        user={user} 
-        currentPage={currentPage} 
-        setCurrentPage={setCurrentPage} 
-        onLogout={handleLogout} 
-      />
+      {/* 
+        [상단 내비게이션 바 컴포넌트]
+        - 로그인 상태에 따라 다른 메뉴를 보여주기 위해 user 상태를 전달합니다.
+        - 로그아웃 동작 처리를 위해 handleLogout 함수를 프롭스(props)로 전달합니다.
+      */}
+      <Navbar user={user} onLogout={handleLogout} />
 
-      {/* 본문 콘텐츠 렌더링 */}
+      {/* 
+        [본문 콘텐츠 라우팅 영역]
+        - <Routes>: 여러 개의 <Route> 중 현재 주소창의 URL 경로(path)와 일치하는 단 하나의 컴포넌트만 찾아 화면에 그립니다.
+        - <Navigate>: 다른 주소로 즉시 이동(Redirect)시키고 싶을 때 사용하는 컴포넌트입니다. (replace 속성은 히스토리에 현재 페이지를 남기지 않음)
+      */}
       <main style={{ flex: 1, padding: '1rem 0' }}>
-        {renderPage()}
+        <Routes>
+          
+          {/* ==========================================
+              비로그인 전용 경로 (로그인 / 회원가입)
+              ========================================== */}
+          {/* 
+            로그인한 사용자가 주소창에 직접 `/login`이나 `/signup`을 쳐서 들어오려 하면 
+            사용자 화면(Coupons)으로 자동 리다이렉트(Navigate)하고, 비로그인 상태일 때만 해당 폼을 보여줍니다.
+          */}
+          <Route 
+            path="/login" 
+            element={user ? <Navigate to="/coupons" replace /> : <Login onLoginSuccess={handleLoginSuccess} />} 
+          />
+          <Route 
+            path="/signup" 
+            element={user ? <Navigate to="/coupons" replace /> : <Signup />} 
+          />
+
+          {/* ==========================================
+              로그인 상태 전용 경로 (쿠폰 신청 / 어드민)
+              ========================================== */}
+          {/* 
+            - 쿠폰 발급 목록: 로그인하지 않은 유저가 접근하면 로그인 창(`/login`)으로 돌려보냅니다.
+            - 쿠폰 관리자: 로그인 검사와 동시에, 사용자의 권한(`role === 'ADMIN'`)을 한 번 더 검사하여
+                          일반 사용자일 경우 쿠폰 신청 화면(`/coupons`)으로 되돌립니다.
+          */}
+          <Route 
+            path="/coupons" 
+            element={user ? <CouponList user={user} /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/admin" 
+            element={
+              user ? (
+                user.role === 'ADMIN' ? (
+                  <AdminCoupon user={user} />
+                ) : (
+                  <Navigate to="/coupons" replace />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            } 
+          />
+
+          {/* ==========================================
+              기타 예외 경로 처리
+              ========================================== */}
+          {/* 
+            정의되지 않은 모든 잘못된 경로(`path="*"`)로 접속했을 때는
+            현재 로그인 상태 여부에 따라 자동으로 메인 페이지 또는 로그인 화면으로 튕겨냅니다.
+          */}
+          <Route 
+            path="*" 
+            element={<Navigate to={user ? "/coupons" : "/login"} replace />} 
+          />
+        </Routes>
       </main>
     </div>
   );
