@@ -41,5 +41,19 @@ public class User extends BaseTimeEntity {
      */
     @Column(nullable = false, unique = true)
     private String username;
+
+    /**
+     * - password: 로그인 검증에 사용하는 비밀번호 필드입니다.
+     *   (실습 편의상 평문 텍스트로 보관하지만, 실무에서는 반드시 해시 암호화해야 합니다.)
+     */
+    @Column(nullable = false)
+    private String password;
+
+    /**
+     * - role: 사용자의 권한 등급을 지정합니다. (예: 일반 사용자 "USER", 관리자 "ADMIN")
+     */
+    @Column(nullable = false)
+    private String role;
+
 }
 

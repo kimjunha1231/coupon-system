@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * [Spring Boot / Service / Dependency Injection / Transaction]
@@ -31,23 +31,20 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class CouponService {
 
-    // final 키워드로 주입받을 레포지토리를 정의합니다.
     private final UserRepository userRepository;
     private final CouponRepository couponRepository;
     private final CouponIssueRepository couponIssueRepository;
 
     /**
-     * 회원 가입 또는 로그인 처리 (유저 조회 후 없으면 새로 생성)
+     * 전체 쿠폰 목록 조회
      */
-    @Transactional
-    public User getOrCreateUser(String username) {
-        // findByUsername 결과가 비어있으면(orElseGet), 새로운 User를 데이터베이스에 저장(save)하고 반환합니다.
-        return userRepository.findByUsername(username)
-                .orElseGet(() -> userRepository.save(User.builder().username(username).build()));
+    @Transactional(readOnly = true)
+    public List<Coupon> getAllCoupons() {
+        return couponRepository.findAll();
     }
 
     /**
-     * 쿠폰 조회
+     * 쿠폰 단건 조회
      */
     @Transactional(readOnly = true)
     public Coupon getCoupon(Long couponId) {
@@ -56,17 +53,46 @@ public class CouponService {
     }
 
     /**
+     * [관리자 전용] 쿠폰 생성 비즈니스 로직
+     */
+    @Transactional
+    public Coupon createCoupon(String name, int totalQuantity, Long adminId) {
+        // 1. 요청한 사용자 정보 조회
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+        // 2. 관리자 권한 검증
+        if (!"ADMIN".equalsIgnoreCase(admin.getRole())) {
+            throw new IllegalStateException("관리자 권한을 가진 사용자만 쿠폰을 생성할 수 있습니다.");
+        }
+
+        // 3. 중복 쿠폰명 검사
+        if (couponRepository.findByName(name).isPresent()) {
+            throw new IllegalStateException("이미 존재하는 쿠폰 이름입니다.");
+        }
+
+        // 4. 쿠폰 정보 등록 및 저장
+        Coupon coupon = Coupon.builder()
+                .name(name)
+                .totalQuantity(totalQuantity)
+                .remainingQuantity(totalQuantity)
+                .build();
+
+        return couponRepository.save(coupon);
+    }
+
+    /**
      * [핵심] 단일 사용자 쿠폰 발급 (동시성 처리 없는 단순 비즈니스 로직)
      * 
-     * * 동시성 문제가 발생하는 이유:
-     *   - 여러 사용자가 동시에 이 메서드를 호출하면, 여러 스레드가 동시에 50번 줄(쿠폰 조회)을 실행하여 동일한 수량의 쿠폰을 조회합니다.
-     *   - 그 후 모든 스레드가 59번 줄(수량 감소)을 처리하고 60번 줄(저장)을 호출하므로, 
-     *     실제로는 쿠폰이 여러 번 나갔음에도 수량은 1번만 줄어든 것처럼 덮어씌워지게 됩니다. (Lost Update / Race Condition)
+     * * 변경 사항:
+     *   - 회원가입과 로그인이 완전히 분리되었으므로, 더 이상 유저를 자동 생성(getOrCreateUser)하지 않습니다.
+     *   - 이미 존재해야 하는 유저를 조회한 뒤, 없을 경우 예외를 던집니다.
      */
     @Transactional
     public CouponIssue issueCoupon(String username, Long couponId) {
-        // 1. 유저 조회 또는 생성
-        User user = getOrCreateUser(username);
+        // 1. 유저 조회 (없으면 예외 발생)
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. 로그인 후 다시 이용해주세요."));
 
         // 2. 쿠폰 존재 확인 (데이터베이스에서 쿠폰 정보를 읽어옴)
         Coupon coupon = couponRepository.findById(couponId)
@@ -78,17 +104,14 @@ public class CouponService {
         }
 
         // 4. 쿠폰 잔여 수량 감소 및 저장 (동시성 제어가 없는 순수 로직)
-        // 객체 내부의 decreaseQuantity()를 통해 수량을 1 깎은 후, 데이터베이스에 save를 통해 반영합니다.
         coupon.decreaseQuantity();
         couponRepository.save(coupon);
 
-        // 5. 쿠폰 발급 이력 객체 생성 및 데이터베이스 저장 (CouponIssue 레코드 추가)
-        // (createdAt과 updatedAt은 JPA Auditing에 의해 저장 시 자동으로 기록됩니다.)
+        // 5. 쿠폰 발급 이력 객체 생성 및 저장
         CouponIssue couponIssue = CouponIssue.builder()
                 .userId(user.getId())
                 .couponId(coupon.getId())
                 .build();
-
 
         return couponIssueRepository.save(couponIssue);
     }
