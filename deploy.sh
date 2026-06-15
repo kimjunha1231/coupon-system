@@ -27,7 +27,7 @@ echo "🟢 신규 백엔드 컨테이너 구동..."
 docker run -d \
   --name coupon-backend \
   --network coupon-net \
-  -p 8080:8080 \
+  -p 8081:8080 \
   -e SPRING_PROFILES_ACTIVE=prod \
   -e SPRING_DATASOURCE_URL="jdbc:mariadb://coupon-mariadb:3306/coupon_db" \
   -e SPRING_DATASOURCE_USERNAME="root" \
